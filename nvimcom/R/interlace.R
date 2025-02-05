@@ -334,6 +334,23 @@ nvim.interlace.rmd <- function(Rmdfile, outform = NULL, rmddir, ...) {
     on.exit(setwd(oldwd))
     setwd(rmddir)
 
+    if (exists("params", envir = .GlobalEnv)) {
+        # rmarkdown::render() and quarto::render() will fail if 'params' is
+        # defined in the global environment. We will save it and restore it
+        # after the rendering.
+        old_params <- get("params", envir = .GlobalEnv)
+        rm("params", envir = .GlobalEnv)
+        on.exit(\() {
+            if (exists("old_params", inherits = FALSE)) {
+                assign(
+                    "params",
+                    old_params,
+                    envir = .GlobalEnv
+                )
+            }
+        })
+    }
+
     if (grepl("\\.qmd$", Rmdfile, ignore.case = TRUE)) {
         if (!require(quarto, quietly = TRUE))
             stop("Please, install the 'quarto' package.")
@@ -354,18 +371,7 @@ nvim.interlace.rmd <- function(Rmdfile, outform = NULL, rmddir, ...) {
         if (is.na(mtime2) || (!is.na(mtime1) && mtime2 <= mtime1))
             res <- ""
     } else {
-        if (exists("params", envir = .GlobalEnv)) {
-            old_params <- get("params", envir = .GlobalEnv)
-            rm(params, envir = .GlobalEnv)
-        }
         res <- rmarkdown::render(Rmdfile, outform, ...)
-        if (exists("old_params", inherits = FALSE)) {
-            assign(
-                "params",
-                old_params,
-                envir = .GlobalEnv
-            )
-        }
     }
     brwsr <- ""
     if (endsWith(res, ".html")) {
